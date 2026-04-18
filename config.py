@@ -59,18 +59,29 @@ def save_config(config: BotConfig, path: str = "config.json") -> None:
 
 
 def load_config(path: str = "config.json") -> BotConfig:
-    with open(path, "r", encoding="utf-8") as f:
-        raw = json.load(f)
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+    else:
+        # No config file — bootstrap from environment variables (e.g. Railway)
+        raw = {
+            "telegram_bot_token": os.environ.get("TELEGRAM_BOT_TOKEN", ""),
+            "chat_id": os.environ.get("CHAT_ID", ""),
+            "default_interval_minutes": int(os.environ.get("DEFAULT_INTERVAL_MINUTES", "60")),
+            "tracked": json.loads(os.environ.get("TRACKED", "[]")),
+        }
 
     token = raw.get("telegram_bot_token", "")
     if not token or token == "YOUR_BOT_TOKEN":
         token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     if not token:
-        raise ValueError("telegram_bot_token is not set in config.json or TELEGRAM_BOT_TOKEN env var")
+        raise ValueError("Set TELEGRAM_BOT_TOKEN env var or telegram_bot_token in config.json")
 
     chat_id = raw.get("chat_id", "")
     if not chat_id or chat_id == "YOUR_CHAT_ID":
-        raise ValueError("chat_id is not set in config.json")
+        chat_id = os.environ.get("CHAT_ID", "")
+    if not chat_id:
+        raise ValueError("Set CHAT_ID env var or chat_id in config.json")
 
     default_interval = int(raw.get("default_interval_minutes", 60))
 
