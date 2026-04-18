@@ -1,0 +1,19 @@
+{
+  "telegram_bot_token": "YOUR_BOT_TOKEN",
+  "chat_id": "YOUR_CHAT_ID",
+  "default_interval_minutes": 60,
+  "tracked": [
+    {
+      "type": "coingecko",
+      "id": "bitcoin",
+      "interval_minutes": 5
+    },
+    {
+      "type": "geckoterminal",
+      "network": "eth",
+      "address": "0xPOOL_OR_TOKEN_ADDRESS",
+      "label": "TOKEN/WETH",
+      "interval_minutes": 15
+    }
+  ]
+}

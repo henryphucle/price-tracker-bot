@@ -1,0 +1,11 @@
+# Secret config — never commit the real one
+config.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Env
+.env
