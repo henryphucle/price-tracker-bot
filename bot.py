@@ -9,7 +9,7 @@ from telegram.ext import Application, CallbackContext, CommandHandler
 
 from config import BotConfig, TrackedItem, load_config, save_config
 from fetcher import FetchError, PriceFetcher
-from formatter import format_price_message
+from formatter import format_price_message, _escape
 
 logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -100,14 +100,35 @@ async def cmd_list(update: Update, context: CallbackContext) -> None:
         return_exceptions=True,
     )
 
+    from datetime import timezone as _tz
+    now = __import__("datetime").datetime.now(_tz.utc)
+
     lines = ["*Tracked tokens:*\n"]
     for item, result in zip(config.tracked, results):
         interval_m = item.interval_seconds // 60
         unit = "min" if interval_m < 60 else ("hr" if interval_m < 1440 else "day")
         val = interval_m if interval_m < 60 else (interval_m // 60 if interval_m < 1440 else interval_m // 1440)
 
+        # Next alert time
+        jobs = context.job_queue.get_jobs_by_name(item.display_label)
+        next_str = "unknown"
+        if jobs and jobs[0].next_t:
+            delta = jobs[0].next_t - now
+            secs = int(delta.total_seconds())
+            if secs <= 0:
+                next_str = "now"
+            elif secs < 60:
+                next_str = f"{secs}s"
+            elif secs < 3600:
+                next_str = f"{secs // 60}m {secs % 60}s"
+            else:
+                next_str = f"{secs // 3600}h {(secs % 3600) // 60}m"
+
         if isinstance(result, Exception):
-            lines.append(f"• *{item.display_label}* — every {val}{unit}\n  _Price unavailable_")
+            lines.append(
+                f"• *{item.display_label}* — every {val}{unit}\n"
+                f"  _Price unavailable_ \\| next in {_escape(next_str)}"
+            )
         else:
             price = result.get("price_usd")
             change = result.get("change_24h_pct")
@@ -115,7 +136,10 @@ async def cmd_list(update: Update, context: CallbackContext) -> None:
             if change is not None:
                 sign = "+" if change >= 0 else ""
                 price_str += f" \\({sign}{change:.2f}%\\)"
-            lines.append(f"• *{item.display_label}* — `{price_str}` every {val}{unit}")
+            lines.append(
+                f"• *{item.display_label}* — `{price_str}` every {val}{unit}\n"
+                f"  next in {_escape(next_str)}"
+            )
 
     await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
 
